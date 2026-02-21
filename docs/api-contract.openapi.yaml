@@ -1,0 +1,1411 @@
+openapi: 3.1.0
+info:
+  title: Goal Coach API Contract
+  version: 1.0.0
+  description: |
+    Frontend-facing API contract for the Goal Coach webapp.
+
+    Scope:
+    - Webapp APIs used by Next.js frontend
+    - Tool APIs used by ElevenLabs Agent
+    - Webhook ingestion contracts for ElevenLabs/Twilio
+
+tags:
+  - name: Auth
+  - name: Goals
+  - name: Habits
+  - name: Habit Logs
+  - name: Schedules
+  - name: Dashboard
+  - name: Chat
+  - name: Weekly Reviews
+  - name: Tools
+  - name: Webhooks
+
+servers:
+  - url: https://api.goalcoach.app/v1
+    description: Production
+  - url: https://staging-api.goalcoach.app/v1
+    description: Staging
+  - url: http://localhost:8000/v1
+    description: Local
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email + password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, expires_in]
+                properties:
+                  access_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                    description: Lifetime in seconds
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '204':
+          description: Logged out
+
+  /auth/verify-phone:
+    post:
+      tags: [Auth]
+      summary: Verify phone via OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_e164, otp_code]
+              properties:
+                phone_e164:
+                  type: string
+                  example: '+14155550123'
+                otp_code:
+                  type: string
+      responses:
+        '200':
+          description: Phone verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [phone_verified]
+                properties:
+                  phone_verified:
+                    type: boolean
+
+  /goals:
+    post:
+      tags: [Goals]
+      summary: Create or replace active goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalUpsertRequest'
+      responses:
+        '201':
+          description: Goal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+
+  /goals/active:
+    get:
+      tags: [Goals]
+      summary: Get active goal
+      responses:
+        '200':
+          description: Active goal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /habits:
+    post:
+      tags: [Habits]
+      summary: Create habit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitCreateRequest'
+      responses:
+        '201':
+          description: Habit created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+
+  /habits/{habit_id}:
+    patch:
+      tags: [Habits]
+      summary: Update habit
+      parameters:
+        - $ref: '#/components/parameters/HabitId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitPatchRequest'
+      responses:
+        '200':
+          description: Habit updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /habit-logs:
+    post:
+      tags: [Habit Logs]
+      summary: Log habit completion/miss/partial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitLogCreateRequest'
+      responses:
+        '201':
+          description: Habit log created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLog'
+
+  /schedules:
+    post:
+      tags: [Schedules]
+      summary: Create or replace schedule configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpsertRequest'
+      responses:
+        '200':
+          description: Schedule saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+
+  /dashboard/today:
+    get:
+      tags: [Dashboard]
+      summary: Get today's dashboard snapshot
+      parameters:
+        - in: query
+          name: date_local
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Defaults to user's local date
+      responses:
+        '200':
+          description: Dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardTodayResponse'
+
+  /chat:
+    post:
+      tags: [Chat]
+      summary: Send message to coach and receive assistant response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+
+  /weekly-reviews/{week_start}:
+    get:
+      tags: [Weekly Reviews]
+      summary: Get weekly review by week start date
+      parameters:
+        - $ref: '#/components/parameters/WeekStart'
+      responses:
+        '200':
+          description: Weekly review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyReview'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /weekly-reviews/{week_start}/approve:
+    post:
+      tags: [Weekly Reviews]
+      summary: Approve pending plan changes for a week
+      parameters:
+        - $ref: '#/components/parameters/WeekStart'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeeklyReviewApproveRequest'
+      responses:
+        '200':
+          description: Approval result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyReviewApproveResponse'
+
+  /tools/get-context-pack:
+    post:
+      tags: [Tools]
+      summary: Retrieve unified context pack for call agent
+      description: Called by ElevenLabs Agent during call runtime.
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Context pack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserContextPack'
+
+  /tools/get-today-plan:
+    post:
+      tags: [Tools]
+      summary: Retrieve today's plan for voice agent
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Today's plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayPlan'
+
+  /tools/log-habit:
+    post:
+      tags: [Tools]
+      summary: Log habit outcome from call conversation
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, habit_id, date_local, status]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                habit_id:
+                  type: string
+                  format: uuid
+                date_local:
+                  type: string
+                  format: date
+                status:
+                  $ref: '#/components/schemas/HabitLogStatus'
+                note:
+                  type: string
+      responses:
+        '201':
+          description: Logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLog'
+
+  /tools/report-blocker:
+    post:
+      tags: [Tools]
+      summary: Save blocker discovered during call
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, blocker_text]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                blocker_text:
+                  type: string
+                severity:
+                  type: string
+                  enum: [low, medium, high]
+                  default: medium
+      responses:
+        '201':
+          description: Blocker recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+
+  /tools/set-commitment:
+    post:
+      tags: [Tools]
+      summary: Save user commitment from call
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, commitment_text, due_date_local]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                commitment_text:
+                  type: string
+                due_date_local:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Commitment saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+
+  /tools/reschedule:
+    post:
+      tags: [Tools]
+      summary: Reschedule next call check-in (optional)
+      security:
+        - toolApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, scheduled_at_utc]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                scheduled_at_utc:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Rescheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [checkin_event_id, scheduled_at_utc]
+                properties:
+                  checkin_event_id:
+                    type: string
+                    format: uuid
+                  scheduled_at_utc:
+                    type: string
+                    format: date-time
+
+  /webhooks/elevenlabs:
+    post:
+      tags: [Webhooks]
+      summary: Ingest post-call webhook from ElevenLabs
+      security:
+        - elevenlabsWebhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElevenLabsWebhookPayload'
+      responses:
+        '202':
+          description: Accepted for async processing
+
+  /webhooks/twilio:
+    post:
+      tags: [Webhooks]
+      summary: Ingest Twilio voice status callback (optional)
+      security:
+        - twilioWebhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TwilioVoiceWebhookPayload'
+      responses:
+        '202':
+          description: Accepted
+
+components:
+  parameters:
+    HabitId:
+      in: path
+      name: habit_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WeekStart:
+      in: path
+      name: week_start
+      required: true
+      schema:
+        type: string
+        format: date
+      description: ISO date for week start (e.g. 2026-02-16)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    toolApiKey:
+      type: apiKey
+      in: header
+      name: x-tool-api-key
+    elevenlabsWebhookSignature:
+      type: apiKey
+      in: header
+      name: x-elevenlabs-signature
+    twilioWebhookSignature:
+      type: apiKey
+      in: header
+      name: X-Twilio-Signature
+
+  responses:
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ConflictError:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    ConsentFlags:
+      type: object
+      required: [calls_opt_in, transcription_opt_in, storage_opt_in]
+      properties:
+        calls_opt_in:
+          type: boolean
+        transcription_opt_in:
+          type: boolean
+        storage_opt_in:
+          type: boolean
+
+    UserPreferences:
+      type: object
+      properties:
+        coaching_style:
+          type: string
+          enum: [supportive, direct, data_driven, mixed]
+        call_windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallWindow'
+        dnd_windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallWindow'
+      additionalProperties: false
+
+    CallWindow:
+      type: object
+      required: [days, start_local, end_local]
+      properties:
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: 0=Sunday, 6=Saturday
+        start_local:
+          type: string
+          example: '08:00'
+        end_local:
+          type: string
+          example: '20:00'
+
+    UserProfile:
+      type: object
+      required: [id, email, name, timezone, phone_verified, consent_flags]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        timezone:
+          type: string
+          example: America/Los_Angeles
+        phone_e164:
+          type: string
+          nullable: true
+        phone_verified:
+          type: boolean
+        consent_flags:
+          $ref: '#/components/schemas/ConsentFlags'
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+
+    AuthRegisterRequest:
+      type: object
+      required: [email, password, name, timezone, consent_flags]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        timezone:
+          type: string
+        phone_e164:
+          type: string
+          nullable: true
+        consent_flags:
+          $ref: '#/components/schemas/ConsentFlags'
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthSessionResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, user]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Lifetime in seconds
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    GoalUpsertRequest:
+      type: object
+      required: [statement, motivation, target_date]
+      properties:
+        statement:
+          type: string
+        motivation:
+          type: string
+        constraints:
+          type: string
+        target_date:
+          type: string
+          format: date
+
+    Goal:
+      type: object
+      required: [id, user_id, statement, motivation, target_date, active, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        statement:
+          type: string
+        motivation:
+          type: string
+        constraints:
+          type: string
+          nullable: true
+        target_date:
+          type: string
+          format: date
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HabitCreateRequest:
+      type: object
+      required: [goal_id, title, frequency, measurement, difficulty_1_to_10, default_time_window]
+      properties:
+        goal_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        frequency:
+          $ref: '#/components/schemas/FrequencyRule'
+        measurement:
+          $ref: '#/components/schemas/MeasurementRule'
+        difficulty_1_to_10:
+          type: integer
+          minimum: 1
+          maximum: 10
+        default_time_window:
+          $ref: '#/components/schemas/TimeWindowSimple'
+        active:
+          type: boolean
+          default: true
+
+    HabitPatchRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        frequency:
+          $ref: '#/components/schemas/FrequencyRule'
+        measurement:
+          $ref: '#/components/schemas/MeasurementRule'
+        difficulty_1_to_10:
+          type: integer
+          minimum: 1
+          maximum: 10
+        default_time_window:
+          $ref: '#/components/schemas/TimeWindowSimple'
+        active:
+          type: boolean
+
+    FrequencyRule:
+      type: object
+      required: [cadence]
+      properties:
+        cadence:
+          type: string
+          enum: [daily, weekdays, specific_days, x_per_week]
+        days_of_week:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+        times_per_week:
+          type: integer
+          minimum: 1
+          maximum: 14
+
+    MeasurementRule:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [binary, count, duration_minutes]
+        target_value:
+          type: number
+
+    TimeWindowSimple:
+      type: object
+      required: [start_local, end_local]
+      properties:
+        start_local:
+          type: string
+          example: '07:00'
+        end_local:
+          type: string
+          example: '09:00'
+
+    Habit:
+      type: object
+      required: [id, user_id, goal_id, title, frequency, measurement, difficulty_1_to_10, default_time_window, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        goal_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        frequency:
+          $ref: '#/components/schemas/FrequencyRule'
+        measurement:
+          $ref: '#/components/schemas/MeasurementRule'
+        difficulty_1_to_10:
+          type: integer
+          minimum: 1
+          maximum: 10
+        default_time_window:
+          $ref: '#/components/schemas/TimeWindowSimple'
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HabitLogStatus:
+      type: string
+      enum: [done, partial, missed, skipped]
+
+    HabitLogCreateRequest:
+      type: object
+      required: [habit_id, date_local, status]
+      properties:
+        habit_id:
+          type: string
+          format: uuid
+        date_local:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/HabitLogStatus'
+        value:
+          type: number
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [manual, chat_auto, call_tool]
+          default: manual
+
+    HabitLog:
+      type: object
+      required: [id, user_id, habit_id, date_local, status, source, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        habit_id:
+          type: string
+          format: uuid
+        date_local:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/HabitLogStatus'
+        value:
+          type: number
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [manual, chat_auto, call_tool]
+        created_at:
+          type: string
+          format: date-time
+
+    RetryPolicy:
+      type: object
+      required: [max_attempts, retry_delay_minutes]
+      properties:
+        max_attempts:
+          type: integer
+          minimum: 0
+          maximum: 5
+        retry_delay_minutes:
+          type: integer
+          minimum: 1
+          maximum: 240
+
+    ScheduleUpsertRequest:
+      type: object
+      required: [type, windows, cadence]
+      properties:
+        type:
+          type: string
+          enum: [call, chat]
+        windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallWindow'
+        cadence:
+          type: object
+          properties:
+            days_per_week:
+              type: integer
+              minimum: 1
+              maximum: 7
+            preferred_times_local:
+              type: array
+              items:
+                type: string
+                example: '18:30'
+            weekly_review_day:
+              type: integer
+              minimum: 0
+              maximum: 6
+        retry_policy:
+          $ref: '#/components/schemas/RetryPolicy'
+
+    Schedule:
+      type: object
+      required: [id, user_id, type, windows, cadence, retry_policy, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [call, chat]
+        windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallWindow'
+        cadence:
+          type: object
+          additionalProperties: true
+        retry_policy:
+          $ref: '#/components/schemas/RetryPolicy'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DashboardHabitItem:
+      type: object
+      required: [habit_id, title, status, target_window, difficulty_1_to_10]
+      properties:
+        habit_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+          enum: [pending, done, partial, missed, skipped]
+        target_window:
+          $ref: '#/components/schemas/TimeWindowSimple'
+        difficulty_1_to_10:
+          type: integer
+
+    CommitmentItem:
+      type: object
+      required: [id, text, due_date_local, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        due_date_local:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [open, completed, canceled]
+
+    DashboardTodayResponse:
+      type: object
+      required: [date_local, timezone, goal, habits_today, commitments, last_call_recap, weekly_focus]
+      properties:
+        date_local:
+          type: string
+          format: date
+        timezone:
+          type: string
+        goal:
+          $ref: '#/components/schemas/Goal'
+        habits_today:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardHabitItem'
+        commitments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitmentItem'
+        last_call_recap:
+          type: string
+          nullable: true
+        weekly_focus:
+          type: string
+          nullable: true
+
+    ChatRequest:
+      type: object
+      required: [thread_id, message]
+      properties:
+        thread_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+        client_message_id:
+          type: string
+          description: Idempotency key from client
+        context_overrides:
+          type: object
+          additionalProperties: true
+          description: Optional UI hints; does not overwrite server truth
+
+    CoachAction:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [habit_log_created, blocker_created, commitment_created, schedule_suggested]
+        payload:
+          type: object
+          additionalProperties: true
+
+    ChatResponse:
+      type: object
+      required: [assistant_message, thread_id, created_at]
+      properties:
+        assistant_message:
+          type: string
+        thread_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        actions_executed:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachAction'
+        memory_snapshot_version:
+          type: integer
+
+    WeeklyHabitStat:
+      type: object
+      required: [habit_id, title, completion_rate, done_count, target_count, recommendation]
+      properties:
+        habit_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        completion_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+        done_count:
+          type: integer
+        target_count:
+          type: integer
+        recommendation:
+          type: string
+          enum: [increase, keep, simplify]
+
+    PlanChange:
+      type: object
+      required: [change_type, target_id, summary]
+      properties:
+        change_type:
+          type: string
+          enum: [habit_create, habit_update, habit_deactivate, schedule_update]
+        target_id:
+          type: string
+          nullable: true
+        summary:
+          type: string
+        patch:
+          type: object
+          additionalProperties: true
+
+    WeeklyReview:
+      type: object
+      required: [user_id, week_start_date, completion_stats, wins, misses, blockers, fixes, week_focus, status]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        week_start_date:
+          type: string
+          format: date
+        completion_stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeeklyHabitStat'
+        wins:
+          type: array
+          items:
+            type: string
+        misses:
+          type: array
+          items:
+            type: string
+        blockers:
+          type: array
+          items:
+            type: string
+        fixes:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        week_focus:
+          type: string
+        pending_plan_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanChange'
+        status:
+          type: string
+          enum: [pending_approval, approved, rejected]
+        generated_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    WeeklyReviewApproveRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        selected_change_ids:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+
+    WeeklyReviewApproveResponse:
+      type: object
+      required: [status, applied_changes_count]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+        applied_changes_count:
+          type: integer
+        updated_habits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Habit'
+
+    UserContextPack:
+      type: object
+      required:
+        - user
+        - goal
+        - active_plan
+        - today_status
+        - summaries
+        - memory_profile
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        goal:
+          $ref: '#/components/schemas/Goal'
+        active_plan:
+          type: object
+          required: [habits, schedule]
+          properties:
+            habits:
+              type: array
+              items:
+                $ref: '#/components/schemas/Habit'
+            schedule:
+              type: array
+              items:
+                $ref: '#/components/schemas/Schedule'
+        today_status:
+          type: object
+          properties:
+            date_local:
+              type: string
+              format: date
+            completed_habit_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            missed_habit_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            commitments_open:
+              type: array
+              items:
+                $ref: '#/components/schemas/CommitmentItem'
+        summaries:
+          type: object
+          properties:
+            last_call_recap:
+              type: string
+              nullable: true
+            rolling_summary:
+              type: string
+              nullable: true
+            weekly_review_summary:
+              type: string
+              nullable: true
+        memory_profile:
+          type: object
+          additionalProperties: true
+        context_version:
+          type: integer
+
+    TodayPlan:
+      type: object
+      required: [date_local, habits, commitments]
+      properties:
+        date_local:
+          type: string
+          format: date
+        habits:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardHabitItem'
+        commitments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitmentItem'
+
+    ElevenLabsWebhookPayload:
+      type: object
+      required: [event_type, event_id, agent_id, call_id, timestamp, payload]
+      properties:
+        event_type:
+          type: string
+          enum: [call.completed, call.failed, call.no_answer]
+        event_id:
+          type: string
+        agent_id:
+          type: string
+        call_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          required: [user_id, checkin_event_id]
+          properties:
+            user_id:
+              type: string
+              format: uuid
+            checkin_event_id:
+              type: string
+              format: uuid
+            started_at:
+              type: string
+              format: date-time
+            ended_at:
+              type: string
+              format: date-time
+            transcript:
+              type: string
+            analysis:
+              type: object
+              properties:
+                completed_habits:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                missed_habits:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                blockers:
+                  type: array
+                  items:
+                    type: string
+                commitments:
+                  type: array
+                  items:
+                    type: string
+                recap_text:
+                  type: string
+
+    TwilioVoiceWebhookPayload:
+      type: object
+      properties:
+        CallSid:
+          type: string
+        CallStatus:
+          type: string
+        From:
+          type: string
+        To:
+          type: string
+        Timestamp:
+          type: string
