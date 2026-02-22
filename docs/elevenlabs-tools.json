@@ -1,0 +1,116 @@
+{
+  "tools": [
+    {
+      "name": "get_context_pack",
+      "description": "Fetch unified user context for the check-in call.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/get-context-pack",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" }
+        }
+      }
+    },
+    {
+      "name": "get_today_plan",
+      "description": "Fetch today habits/commitments for the call.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/get-today-plan",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" }
+        }
+      }
+    },
+    {
+      "name": "log_habit",
+      "description": "Log habit completion from call conversation.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/log-habit",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id", "habit_id", "date_local", "status"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "habit_id": { "type": "string", "format": "uuid" },
+          "date_local": { "type": "string", "format": "date" },
+          "status": { "type": "string", "enum": ["done", "partial", "missed", "skipped"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "report_blocker",
+      "description": "Capture blocker reported during call.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/report-blocker",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id", "blocker_text"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "blocker_text": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+        }
+      }
+    },
+    {
+      "name": "set_commitment",
+      "description": "Store user commitment from the call.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/set-commitment",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id", "commitment_text", "due_date_local"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "commitment_text": { "type": "string" },
+          "due_date_local": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    {
+      "name": "reschedule_checkin",
+      "description": "Reschedule next call check-in.",
+      "method": "POST",
+      "url": "{{API_BASE_URL}}/tools/reschedule",
+      "headers": {
+        "x-tool-api-key": "{{TOOL_API_KEY}}",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id", "scheduled_at_utc"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "scheduled_at_utc": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

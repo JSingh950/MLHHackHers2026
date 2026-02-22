@@ -10,10 +10,12 @@
     "dev:api": "npm run dev -w @goalcoach/api",
     "dev:web": "npm run dev -w @goalcoach/web",
     "dev:worker": "npm run dev -w @goalcoach/worker",
+    "start": "node scripts/railway-start.mjs",
     "typecheck": "npm run typecheck -ws --if-present",
     "build": "npm run build -ws --if-present"
   },
   "devDependencies": {
+    "shadcn": "^3.8.5",
     "typescript": "^5.8.2"
   }
 }

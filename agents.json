@@ -1,0 +1,12 @@
+{
+    "agents": [
+        {
+            "config": "agent_configs/Jeeyan.json",
+            "id": "agent_8401kj1g5cy0fpxrgnccb24b7sam"
+        },
+        {
+            "config": "agent_configs/Helpy.json",
+            "id": "agent_7401kj0sbtm5f9mv9xa5gzs6g8rk"
+        }
+    ]
+}

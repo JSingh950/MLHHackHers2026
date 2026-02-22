@@ -1,16 +1,21 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../components/auth-provider";
 
 export default function HomePage() {
+  const { hydrated, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!hydrated) return;
+    router.replace(isAuthenticated ? "/dashboard" : "/login");
+  }, [hydrated, isAuthenticated, router]);
+
   return (
-    <main style={{ padding: 32, maxWidth: 920, margin: "0 auto" }}>
-      <h1 style={{ marginTop: 0 }}>Goal Coach</h1>
-      <p style={{ color: "#4d5663" }}>
-        Contract-first implementation started. Use the workbench to hit `/v1` API endpoints for onboarding, habits,
-        dashboard, and chat.
-      </p>
-      <Link href="/workbench" style={{ color: "#0a58ca", fontWeight: 600 }}>
-        Open Workbench
-      </Link>
+    <main className="page-shell">
+      <div className="panel card">Loading...</div>
     </main>
   );
 }

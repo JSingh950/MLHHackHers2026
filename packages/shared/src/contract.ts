@@ -33,6 +33,34 @@ export interface Habit {
   updated_at: string;
 }
 
+export interface RetryPolicy {
+  max_attempts: number;
+  retry_delay_minutes: number;
+}
+
+export interface Schedule {
+  id: UUID;
+  user_id: UUID;
+  type: "call" | "chat";
+  windows: Array<Record<string, unknown>>;
+  cadence: Record<string, unknown>;
+  retry_policy: RetryPolicy;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CheckinEvent {
+  id: UUID;
+  user_id: UUID;
+  scheduled_at_utc: string;
+  type: "call" | "chat";
+  status: "scheduled" | "in_progress" | "completed" | "failed" | "no_answer";
+  attempt_count: number;
+  provider_call_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DashboardHabitItem {
   habit_id: UUID;
   title: string;

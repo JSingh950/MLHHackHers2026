@@ -1,0 +1,34 @@
+{
+    "tools": [
+        {
+            "type": "webhook",
+            "config": "tool_configs/get_context_pack.json",
+            "id": "tool_2601kj1p339eef0bgy69402r50sh"
+        },
+        {
+            "type": "webhook",
+            "config": "tool_configs/get_today_plan.json",
+            "id": "tool_3301kj1p3afeef28d1ccw1j2x4sh"
+        },
+        {
+            "type": "webhook",
+            "config": "tool_configs/log_habit.json",
+            "id": "tool_0901kj1p3b04ebbt79tntfjf3y6x"
+        },
+        {
+            "type": "webhook",
+            "config": "tool_configs/report_blocker.json",
+            "id": "tool_1101kj1p3bgmevrr0sgbaksya1wq"
+        },
+        {
+            "type": "webhook",
+            "config": "tool_configs/set_commitment.json",
+            "id": "tool_3401kj1p3c1cf0a9yn04smyf4r97"
+        },
+        {
+            "type": "webhook",
+            "config": "tool_configs/reschedule_checkin.json",
+            "id": "tool_8701kj1p3cjhebvrnpr56tkgh1kf"
+        }
+    ]
+}

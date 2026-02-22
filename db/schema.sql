@@ -2,7 +2,6 @@
 -- Aligned to docs/api-contract.openapi.yaml and locked table list.
 
 create extension if not exists pgcrypto;
-create extension if not exists vector;
 
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
@@ -76,6 +75,7 @@ create table if not exists checkin_events (
   type text not null check (type in ('call', 'chat')),
   status text not null check (status in ('scheduled', 'in_progress', 'completed', 'failed', 'no_answer')),
   attempt_count integer not null default 0,
+  provider_call_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -116,7 +116,12 @@ create table if not exists weekly_reviews (
   user_id uuid not null references users(id) on delete cascade,
   week_start_date date not null,
   completion_stats jsonb not null,
+  wins jsonb not null default '[]'::jsonb,
+  misses jsonb not null default '[]'::jsonb,
+  blockers jsonb not null default '[]'::jsonb,
+  fixes jsonb not null default '[]'::jsonb,
   summary text,
+  week_focus text,
   plan_changes_json jsonb,
   status text not null check (status in ('pending_approval', 'approved', 'rejected')),
   generated_at timestamptz,
@@ -128,6 +133,9 @@ create table if not exists weekly_reviews (
 create table if not exists memory_profile (
   user_id uuid primary key references users(id) on delete cascade,
   stable_facts jsonb,
+  rolling_summary text,
+  last_call_recap text,
+  weekly_review_summary text,
   updated_at timestamptz not null default now()
 );
 
@@ -137,10 +145,50 @@ create table if not exists memory_embeddings (
   chunk_id text not null,
   text text not null,
   metadata jsonb,
-  vector vector(1536),
+  embedding double precision[],
   created_at timestamptz not null default now()
 );
+
+create table if not exists blockers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  blocker_text text not null,
+  severity text not null default 'medium' check (severity in ('low', 'medium', 'high')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists commitments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  text text not null,
+  due_date_local date not null,
+  status text not null check (status in ('open', 'completed', 'canceled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists auth_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  refresh_token_hash text not null unique,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table weekly_reviews add column if not exists wins jsonb not null default '[]'::jsonb;
+alter table weekly_reviews add column if not exists misses jsonb not null default '[]'::jsonb;
+alter table weekly_reviews add column if not exists blockers jsonb not null default '[]'::jsonb;
+alter table weekly_reviews add column if not exists fixes jsonb not null default '[]'::jsonb;
+alter table weekly_reviews add column if not exists week_focus text;
+alter table checkin_events add column if not exists provider_call_id text;
+
+alter table memory_profile add column if not exists rolling_summary text;
+alter table memory_profile add column if not exists last_call_recap text;
+alter table memory_profile add column if not exists weekly_review_summary text;
 
 create index if not exists habit_logs_user_date_idx on habit_logs (user_id, date_local);
 create index if not exists checkin_events_due_idx on checkin_events (scheduled_at_utc, status);
 create index if not exists messages_user_thread_idx on messages (user_id, thread_id, created_at);
+create index if not exists commitments_user_status_idx on commitments (user_id, status, due_date_local);
+create index if not exists auth_sessions_user_idx on auth_sessions (user_id, created_at desc);

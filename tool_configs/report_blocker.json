@@ -1,0 +1,59 @@
+{
+  "type": "webhook",
+  "name": "report_blocker",
+  "description": "Capture blocker reported during call.",
+  "response_timeout_secs": 8,
+  "disable_interruptions": true,
+  "force_pre_tool_speech": true,
+  "assignments": [],
+  "tool_call_sound_behavior": "always",
+  "tool_error_handling_mode": "auto",
+  "dynamic_variables": {
+    "dynamicVariablePlaceholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {
+      "Content-Type": "application/json",
+      "x-tool-api-key": "b8ca616325a718d6634728c74bc78c8fa43315e0dfb29c6a"
+    },
+    "url": "https://api-production-8bf7.up.railway.app/v1/tools/report-blocker",
+    "method": "POST",
+    "path_params_schema": {},
+    "request_body_schema": {
+      "type": "object",
+      "required": [
+        "userId",
+        "blockerText"
+      ],
+      "description": "",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "dynamic_variable": "user_id"
+        },
+        "blocker_text": {
+          "type": "string",
+          "description": "Blocker details from conversation.",
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "severity": {
+          "type": "string",
+          "description": "Optional blocker severity.",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      }
+    },
+    "content_type": "application/json"
+  },
+  "tool_call_sound": "typing"
+}
